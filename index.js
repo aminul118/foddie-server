@@ -36,6 +36,10 @@ async function run() {
       const result = await usersCollections.insertOne(newUser);
       res.send(result);
     });
+    app.get("/users", async (req, res) => {
+      const result = await usersCollections.findOne();
+      res.send(result);
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
