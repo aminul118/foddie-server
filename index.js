@@ -36,6 +36,7 @@ async function run() {
 
     const usersCollections = client.db("FoddieDB").collection("users");
     const foodCollections = client.db("FoddieDB").collection("foods");
+    const orderCollections = client.db("FoddieDB").collection("orders");
 
     //  Create a new user
     app.post("/users", async (req, res) => {
@@ -67,14 +68,98 @@ async function run() {
     });
 
     app.get("/foods", async (req, res) => {
-      const result = await foodCollections.find().toArray();
-      res.status(200).send(result);
+      try {
+        const email = req.query.email;
+
+        if (!email) {
+          return res
+            .status(400)
+            .send({ error: "Email query parameter is required." });
+        }
+
+        const filter = { "addedBy.email": email }; // Use dot notation for nested queries
+        const result = await foodCollections.find(filter).toArray();
+
+        res.status(200).send(result);
+      } catch (error) {
+        console.error("Error fetching foods:", error);
+        res.status(500).send({ error: "Failed to fetch foods" });
+      }
     });
+    app.get("/all-foods", async (req, res) => {
+      const result = await foodCollections.find().toArray();
+      res.send(result);
+    });
+
+    app.put("/food/:id", async (req, res) => {
+      const id = req.params.id;
+      const food = req.body;
+      const query = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updateFood = {
+        $set: {
+          food_name: food.food_name,
+          food_image: food.food_image,
+          food_category: food.food_category,
+          quantity: food.quantity,
+          price: food.price,
+          origin: food.origin,
+          ingredients: food.igredients,
+        },
+      };
+      const update = await foodCollections.updateOne(
+        query,
+        updateFood,
+        options
+      );
+      res.send(update);
+    });
+
     app.get("/food/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await foodCollections.findOne(query);
       res.status(200).send(result);
+    });
+
+    //! Food Orders
+    app.post("/order", async (req, res) => {
+      const newOrder = req.body;
+      const sellerEmail = newOrder.addedBy.email;
+      const buyerEmail = newOrder.buyerEmail;
+
+      if (buyerEmail === sellerEmail) {
+        return res
+          .status(400)
+          .send("You are the seller. You can not oder this food ");
+      }
+
+      const result = await orderCollections.insertOne(newOrder);
+      res.status(201).send(result);
+    });
+
+    app.get("/orders", async (req, res) => {
+      const result = await orderCollections.find().toArray();
+      res.status(201).send(result);
+    });
+
+    app.delete("/order/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await orderCollections.deleteOne(query);
+      res.send(result);
+    });
+
+    app.get("/my-orders", async (req, res) => {
+      const email = req.query.email;
+      if (!email) {
+        return res.status(400).send("Please login with email..");
+      }
+      const filter = {
+        buyerEmail: email,
+      };
+      const result = await orderCollections.find(filter).toArray();
+      res.send(result);
     });
 
     // Send a ping to confirm a successful connection
