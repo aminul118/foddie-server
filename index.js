@@ -104,8 +104,24 @@ async function run() {
     });
 
     app.get("/all-foods", async (req, res) => {
-      const result = await foodCollections.find().toArray();
-      res.send(result);
+      const { search } = req.query;
+
+      // Initialize an empty query
+      let options = {};
+
+      let query = {
+        // Apply search filter if 'search' query is provided
+        food_name: {
+          $regex: search,
+          $options: "i", // Case-insensitive search
+        },
+      };
+
+      // Fetch data from the database
+      const result = await foodCollections.find(query).toArray();
+
+      // Send the result back to the client
+      res.status(200).send(result);
     });
 
     app.put("/food/:id", async (req, res) => {
