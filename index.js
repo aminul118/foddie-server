@@ -86,6 +86,23 @@ async function run() {
         res.status(500).send({ error: "Failed to fetch foods" });
       }
     });
+
+    app.get("/topSelling", async (req, res) => {
+      try {
+        const result = await foodCollections
+          .aggregate([
+            { $sort: { purchased_count: -1 } }, // Sort by purchased_count in descending order
+            { $limit: 6 }, // Optional: Limit to top 10 results
+          ])
+          .toArray(); // Convert cursor to array
+
+        res.send(result); // Send the sorted result
+      } catch (error) {
+        console.error("Error fetching top-selling items:", error);
+        res.status(500).send("Internal Server Error");
+      }
+    });
+
     app.get("/all-foods", async (req, res) => {
       const result = await foodCollections.find().toArray();
       res.send(result);
@@ -127,12 +144,22 @@ async function run() {
       const newOrder = req.body;
       const sellerEmail = newOrder.addedBy.email;
       const buyerEmail = newOrder.buyerEmail;
+      const orderQuentity = newOrder.orderQuantity;
 
       if (buyerEmail === sellerEmail) {
         return res
           .status(400)
           .send("You are the seller. You can not oder this food ");
       }
+      const id = newOrder.food_id;
+      const filter = { _id: new ObjectId(id) };
+      const update = {
+        $inc: {
+          quantity: -orderQuentity,
+          purchased_count: 1,
+        },
+      };
+      const updateQuantity = await foodCollections.updateOne(filter, update);
 
       const result = await orderCollections.insertOne(newOrder);
       res.status(201).send(result);
@@ -142,10 +169,30 @@ async function run() {
       const result = await orderCollections.find().toArray();
       res.status(201).send(result);
     });
+    app.get("/order/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await orderCollections.findOne(query);
+      res.send(result);
+    });
 
     app.delete("/order/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
+
+      const foodDetails = await orderCollections.findOne(query);
+      const orderQuantity = foodDetails.orderQuantity;
+      const foodId = foodDetails.food_id;
+      const findFood = { _id: new ObjectId(foodId) };
+      const updateInfo = {
+        $inc: {
+          quantity: +orderQuantity,
+          purchased_count: -1,
+        },
+      };
+      const update = await foodCollections.updateOne(findFood, updateInfo);
+      // console.log("Food info", foodId);
+
       const result = await orderCollections.deleteOne(query);
       res.send(result);
     });
