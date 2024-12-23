@@ -201,7 +201,7 @@ async function run() {
     });
 
     //! Food Orders
-    app.post("/order", verifyToken, async (req, res) => {
+    app.post("/order", async (req, res) => {
       const newOrder = req.body;
       const sellerEmail = newOrder.addedBy.email;
       const buyerEmail = newOrder.buyerEmail;
