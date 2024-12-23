@@ -9,7 +9,7 @@ const port = process.env.PORT || 5000;
 // Middleware
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: ["http://localhost:5173", "https://foddie-resturant.netlify.app"],
     credentials: true,
   })
 );
@@ -41,8 +41,8 @@ app.post("/jwt", async (req, res) => {
   res
     .cookie("token", token, {
       httpOnly: true,
-      secure: false,
-      sameSite: "strict",
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
     })
     .send({ success: true });
 });
@@ -51,7 +51,9 @@ app.post("/logout", (req, res) => {
   res
     .clearCookie("token", {
       httpOnly: true,
-      secure: false,
+      maxAge: 0,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
     })
     .send({ success: true });
 });
