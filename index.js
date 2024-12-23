@@ -1,5 +1,7 @@
 const express = require("express");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
+const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const app = express();
 const port = process.env.PORT || 5000;
@@ -11,7 +13,48 @@ app.use(
     credentials: true,
   })
 );
+// Middleware
 app.use(express.json());
+app.use(cookieParser());
+
+const verifyToken = (req, res, next) => {
+  const token = req.cookies?.token;
+  console.log("Token is inside the verify token", token);
+  // If token is not here we don't give the data to user
+  if (!token) {
+    return res.status(401).send({ message: "Unauthorized Access" });
+  }
+  // Verify The token
+  jwt.verify(token, process.env.SECRET_KEY, (err, decoded) => {
+    if (err) {
+      res.status(401).send({ message: "Unauthorized Access" });
+    }
+    req.user = decoded;
+
+    next();
+  });
+};
+
+app.post("/jwt", async (req, res) => {
+  const user = req.body;
+  const token = jwt.sign(user, process.env.SECRET_KEY, { expiresIn: "5h" });
+  res
+    .cookie("token", token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "strict",
+    })
+    .send({ success: true });
+});
+
+app.post("/logout", (req, res) => {
+  res
+    .clearCookie("token", {
+      httpOnly: true,
+      secure: false,
+    })
+    .send({ success: true });
+});
 
 app.get("/", (req, res) => {
   res.send("Server is running.....");
@@ -61,13 +104,13 @@ async function run() {
     });
 
     // Foods collections
-    app.post("/add-food", async (req, res) => {
+    app.post("/add-food", verifyToken, async (req, res) => {
       const newFood = req.body;
       const result = await foodCollections.insertOne(newFood);
       res.status(201).send(result);
     });
 
-    app.get("/foods", async (req, res) => {
+    app.get("/foods", verifyToken, async (req, res) => {
       try {
         const email = req.query.email;
 
@@ -156,7 +199,7 @@ async function run() {
     });
 
     //! Food Orders
-    app.post("/order", async (req, res) => {
+    app.post("/order", verifyToken, async (req, res) => {
       const newOrder = req.body;
       const sellerEmail = newOrder.addedBy.email;
       const buyerEmail = newOrder.buyerEmail;
@@ -181,18 +224,18 @@ async function run() {
       res.status(201).send(result);
     });
 
-    app.get("/orders", async (req, res) => {
+    app.get("/orders", verifyToken, async (req, res) => {
       const result = await orderCollections.find().toArray();
       res.status(201).send(result);
     });
-    app.get("/order/:id", async (req, res) => {
+    app.get("/order/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await orderCollections.findOne(query);
       res.send(result);
     });
 
-    app.delete("/order/:id", async (req, res) => {
+    app.delete("/order/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
 
@@ -213,7 +256,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/my-orders", async (req, res) => {
+    app.get("/my-orders", verifyToken, async (req, res) => {
       const email = req.query.email;
       if (!email) {
         return res.status(400).send("Please login with email..");
