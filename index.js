@@ -77,7 +77,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server (optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     const usersCollections = client.db("FoddieDB").collection("users");
     const foodCollections = client.db("FoddieDB").collection("foods");
@@ -100,8 +100,10 @@ async function run() {
     });
 
     // GET /users - Get all users
-    app.get("/users", async (req, res) => {
-      const users = await usersCollections.findOne();
+    app.get("/users", verifyToken, async (req, res) => {
+      const { email } = req.query;
+      const query = { email };
+      const users = await usersCollections.findOne(query);
       res.status(200).send(users); // 200 OK
     });
 
@@ -280,10 +282,10 @@ async function run() {
     });
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
   } catch (error) {
     console.error("Error during operation:", error);
   }
