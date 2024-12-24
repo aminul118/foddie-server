@@ -149,24 +149,33 @@ async function run() {
     });
 
     app.get("/all-foods", async (req, res) => {
-      const { search } = req.query;
+      try {
+        const { search } = req.query;
+        const currentPage = parseInt(req.query.currentPage);
+        const itemPerPage = parseInt(req.query.itemPerPage);
 
-      // Initialize an empty query
-      let options = {};
+        const query = search
+          ? {
+              food_name: { $regex: search, $options: "i" },
+            }
+          : {};
 
-      let query = {
-        // Apply search filter if 'search' query is provided
-        food_name: {
-          $regex: search,
-          $options: "i", // Case-insensitive search
-        },
-      };
+        const totalItems = await foodCollections.countDocuments(query); // Get total item count
 
-      // Fetch data from the database
-      const result = await foodCollections.find(query).toArray();
+        const result = await foodCollections
+          .find(query)
+          .skip((currentPage - 1) * itemPerPage) // Correct skip logic
+          .limit(itemPerPage)
+          .toArray();
 
-      // Send the result back to the client
-      res.status(200).send(result);
+        res.status(200).send({
+          foods: result,
+          totalItems,
+        });
+      } catch (error) {
+        console.error("Error fetching foods:", error);
+        res.status(500).send({ message: "Internal Server Error" });
+      }
     });
 
     app.put("/food/:id", async (req, res) => {
