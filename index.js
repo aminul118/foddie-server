@@ -22,12 +22,12 @@ const verifyToken = (req, res, next) => {
   console.log("Token is inside the verify token", token);
   // If token is not here we don't give the data to user
   if (!token) {
-    return res.status(401).send({ message: "Unauthorized Access" });
+    return res.status(401).send({ message: "Unauthorized Access 1" });
   }
   // Verify The token
   jwt.verify(token, process.env.SECRET_KEY, (err, decoded) => {
     if (err) {
-      res.status(401).send({ message: "Unauthorized Access" });
+      res.status(401).send({ message: "Unauthorized Access 2" });
     }
     req.user = decoded;
 
@@ -41,6 +41,7 @@ app.post("/jwt", async (req, res) => {
   res
     .cookie("token", token, {
       httpOnly: true,
+      maxAge: 3600 * 1000,
       secure: process.env.NODE_ENV === "production",
       sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
     })
