@@ -35,6 +35,12 @@ const verifyToken = (req, res, next) => {
   });
 };
 
+/**
+ * ------------------------------------------------------
+ *  JWT
+ * ------------------------------------------------------
+ */
+
 app.post("/jwt", async (req, res) => {
   const user = req.body;
   const token = jwt.sign(user, process.env.SECRET_KEY, { expiresIn: "5h" });
@@ -80,11 +86,21 @@ async function run() {
     // Connect the client to the server (optional starting in v4.7)
     // await client.connect();
 
+    /**
+     * ------------------------------------------------------
+     * !     DB collections
+     * ------------------------------------------------------
+     */
+
     const usersCollections = client.db("FoddieDB").collection("users");
     const foodCollections = client.db("FoddieDB").collection("foods");
     const orderCollections = client.db("FoddieDB").collection("orders");
 
-    //  Create a new user
+    /**
+     * ------------------------------------------------------
+     * !     Users collections
+     * ------------------------------------------------------
+     */
     app.post("/users", async (req, res) => {
       const newUser = req.body;
       const email = newUser.email;
@@ -108,7 +124,12 @@ async function run() {
       res.status(200).send(users); // 200 OK
     });
 
-    // Foods collections
+    /**
+     * ------------------------------------------------------
+     *  !    Foods collections
+     * ------------------------------------------------------
+     */
+
     app.post("/add-food", verifyToken, async (req, res) => {
       const newFood = req.body;
       const result = await foodCollections.insertOne(newFood);
@@ -181,6 +202,13 @@ async function run() {
       }
     });
 
+    app.get("/food/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await foodCollections.findOne(query);
+      res.status(200).send(result);
+    });
+
     app.put("/food/:id", async (req, res) => {
       const id = req.params.id;
       const food = req.body;
@@ -205,14 +233,20 @@ async function run() {
       res.send(update);
     });
 
-    app.get("/food/:id", async (req, res) => {
+    app.delete("/food/:id",verifyToken, async (req, res) => {
+      const email = req.query.email;
       const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await foodCollections.findOne(query);
-      res.status(200).send(result);
+      const query = { _id: new ObjectId(id), "addedBy.email": email };
+      const result = await foodCollections.deleteOne(query);
+      res.send(result);
     });
 
-    //! Food Orders
+    /**
+     * ------------------------------------------------------
+     *  !    Food Orders
+     * ------------------------------------------------------
+     */
+
     app.post("/order", async (req, res) => {
       const newOrder = req.body;
       const sellerEmail = newOrder.addedBy.email;
@@ -249,6 +283,18 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/my-orders", verifyToken, async (req, res) => {
+      const email = req.query.email;
+      if (!email) {
+        return res.status(400).send("Please login with email..");
+      }
+      const filter = {
+        buyerEmail: email,
+      };
+      const result = await orderCollections.find(filter).toArray();
+      res.send(result);
+    });
+
     app.delete("/order/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
@@ -267,18 +313,6 @@ async function run() {
       // console.log("Food info", foodId);
 
       const result = await orderCollections.deleteOne(query);
-      res.send(result);
-    });
-
-    app.get("/my-orders", verifyToken, async (req, res) => {
-      const email = req.query.email;
-      if (!email) {
-        return res.status(400).send("Please login with email..");
-      }
-      const filter = {
-        buyerEmail: email,
-      };
-      const result = await orderCollections.find(filter).toArray();
       res.send(result);
     });
 
