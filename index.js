@@ -91,10 +91,10 @@ async function run() {
      * !     DB collections
      * ------------------------------------------------------
      */
-
-    const usersCollections = client.db("FoddieDB").collection("users");
-    const foodCollections = client.db("FoddieDB").collection("foods");
-    const orderCollections = client.db("FoddieDB").collection("orders");
+    const db = client.db("FoddieDB");
+    const usersCollections = db.collection("users");
+    const foodCollections = db.collection("foods");
+    const orderCollections = db.collection("orders");
 
     /**
      * ------------------------------------------------------
@@ -173,33 +173,8 @@ async function run() {
     });
 
     app.get("/all-foods", async (req, res) => {
-      try {
-        const { search } = req.query;
-        const currentPage = parseInt(req.query.currentPage);
-        const itemPerPage = parseInt(req.query.itemPerPage);
-
-        const query = search
-          ? {
-              food_name: { $regex: search, $options: "i" },
-            }
-          : {};
-
-        const totalItems = await foodCollections.countDocuments(query); // Get total item count
-
-        const result = await foodCollections
-          .find(query)
-          .skip((currentPage - 1) * itemPerPage) // Correct skip logic
-          .limit(itemPerPage)
-          .toArray();
-
-        res.status(200).send({
-          foods: result,
-          totalItems,
-        });
-      } catch (error) {
-        console.error("Error fetching foods:", error);
-        res.status(500).send({ message: "Internal Server Error" });
-      }
+      const result = await foodCollections.find().toArray();
+      res.send(result);
     });
 
     app.get("/food/:id", async (req, res) => {
@@ -209,7 +184,7 @@ async function run() {
       res.status(200).send(result);
     });
 
-    app.put("/food/:id", async (req, res) => {
+    app.put("/foods/:id", async (req, res) => {
       const id = req.params.id;
       const food = req.body;
       const query = { _id: new ObjectId(id) };
@@ -233,10 +208,9 @@ async function run() {
       res.send(update);
     });
 
-    app.delete("/food/:id",verifyToken, async (req, res) => {
-      const email = req.query.email;
+    app.delete("/foods/:id", async (req, res) => {
       const id = req.params.id;
-      const query = { _id: new ObjectId(id), "addedBy.email": email };
+      const query = { _id: new ObjectId(id) };
       const result = await foodCollections.deleteOne(query);
       res.send(result);
     });
