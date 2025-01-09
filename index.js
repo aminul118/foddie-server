@@ -173,7 +173,33 @@ async function run() {
     });
 
     app.get("/all-foods", async (req, res) => {
-      const result = await foodCollections.find().toArray();
+      const { search, sort } = req.query;
+      console.log(sort, search);
+      const sortOrder = sort === "asc" ? 1 : -1;
+      const aggregate = [
+        {
+          $match: {
+            $or: [
+              {
+                food_name: { $regex: search, $options: "i" },
+              },
+              {
+                food_category: { $regex: search, $options: "i" },
+              },
+              {
+                ingredients: { $regex: search, $options: "i" },
+              },
+            ],
+          },
+        },
+        {
+          $sort: {
+            price: sortOrder,
+          },
+        },
+      ];
+
+      const result = await foodCollections.aggregate(aggregate).toArray();
       res.send(result);
     });
 
