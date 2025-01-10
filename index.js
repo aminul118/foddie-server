@@ -9,7 +9,11 @@ const port = process.env.PORT || 5000;
 // Middleware
 app.use(
   cors({
-    origin: ["http://localhost:5173", "https://foddie-resturant.netlify.app"],
+    origin: [
+      "http://localhost:5173",
+      "https://foddie-resturant.netlify.app",
+      "https://foddie-32758.web.app",
+    ],
     credentials: true,
   })
 );
@@ -151,7 +155,7 @@ async function run() {
 
         res.status(200).send(result);
       } catch (error) {
-        console.error("Error fetching foods:", error);
+        // console.error("Error fetching foods:", error);
         res.status(500).send({ error: "Failed to fetch foods" });
       }
     });
