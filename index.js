@@ -173,34 +173,34 @@ async function run() {
     });
 
     app.get("/all-foods", async (req, res) => {
-      const { search, sort } = req.query;
-      console.log(sort, search);
+      const { search, sort, selectedPage, foodPerPage } = req.query;
+      const page = parseInt(foodPerPage);
+      const selected = parseInt(selectedPage);
+      const skip = (selected - 1) * page;
+
       const sortOrder = sort === "asc" ? 1 : -1;
+
+      const matchStage = {
+        $match: {
+          $or: [
+            { food_name: { $regex: search, $options: "i" } },
+            { food_category: { $regex: search, $options: "i" } },
+            { ingredients: { $regex: search, $options: "i" } },
+          ],
+        },
+      };
+
+      const totalFood = await foodCollections.countDocuments(matchStage.$match);
+
       const aggregate = [
-        {
-          $match: {
-            $or: [
-              {
-                food_name: { $regex: search, $options: "i" },
-              },
-              {
-                food_category: { $regex: search, $options: "i" },
-              },
-              {
-                ingredients: { $regex: search, $options: "i" },
-              },
-            ],
-          },
-        },
-        {
-          $sort: {
-            price: sortOrder,
-          },
-        },
+        matchStage,
+        { $sort: { price: sortOrder } },
+        { $skip: skip },
+        { $limit: page },
       ];
 
-      const result = await foodCollections.aggregate(aggregate).toArray();
-      res.send(result);
+      const foods = await foodCollections.aggregate(aggregate).toArray();
+      res.send({ totalFood, foods });
     });
 
     app.get("/food/:id", async (req, res) => {
